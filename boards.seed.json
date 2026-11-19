@@ -1,0 +1,5 @@
+{
+  "ashby": ["abridge", "airtable", "browserbase", "cursor", "deel", "hex", "linear", "mercury", "middesk", "modal", "montecarlodata", "neon", "openai", "posthog", "ramp", "replit", "sardine", "supabase", "vercel", "warp", "watershed", "zip"],
+  "greenhouse": ["affirm", "airbnb", "anthropic", "asana", "chime", "coinbase", "databricks", "discord", "dropbox", "figma", "flexport", "gitlab", "instacart", "lyft", "pinterest", "robinhood", "samsara", "stripe"],
+  "lever": ["matchgroup", "netflix", "palantir", "plaid", "spotify", "voleon"]
+}
