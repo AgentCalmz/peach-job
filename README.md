@@ -4,11 +4,13 @@ A separate scheduled data pipeline for **PeachJobs**, TeamPeach's 30-day job-sea
 
 The pipeline follows the same division of work as TeamPeach's domain-data system:
 
-1. GitHub Actions runs the collector daily at 07:45 Africa/Lagos.
+1. GitHub Actions runs the collector every four hours at minute 17 (00:17, 04:17, 08:17, 12:17, 16:17 and 20:17 Africa/Lagos).
 2. The collector discovers public Ashby, Greenhouse and Lever employer boards using recent public archive captures, urlscan results and a small seed list.
 3. It reads the persistent employer-board registry from TeamPeach's Cloudflare Worker, validates newly discovered boards, fetches public job-posting APIs and retains only postings published within the last 30 days.
 4. It sends normalized batches to the protected Worker ingestion endpoint.
 5. The Worker writes records into Cloudflare D1. TeamPeach's public PeachJobs page reads and filters the D1 records through the same Worker.
+
+GitHub Actions can occasionally start a scheduled workflow later than its nominal time. Manual dispatch remains available in the Actions tab.
 
 No Render processing, Supabase dependency, always-on server, resume upload or local PC scheduler is required. The collector uses Python's standard library only.
 
@@ -26,21 +28,19 @@ The initial seed list is deliberately a starting point, not the final universe. 
 
 Only standard public listing fields are retained: employer, title, team/department, location, work arrangement, employment type, publication date and the original application URL. Full job-description text is not copied into the database.
 
-## Cloudflare setup (one time)
+## Cloudflare setup
 
-The jobs API is added to TeamPeach's existing Worker at:
+Follow the detailed, click-by-click instructions in [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md).
+
+The jobs API extends TeamPeach's existing Worker at:
 
 `https://teampeach-domain-api.creatorletofficial.workers.dev`
 
-1. In Cloudflare, create a D1 database named `teampeach-jobs`.
-2. Apply `jobs/migrations/0001_init.sql` from the TeamPeach Worker integration in `AgentCalmz/domains`.
-3. Add a D1 binding to the existing Worker with the exact variable name `JOBS_DB` and select `teampeach-jobs`.
-4. Add a Worker secret named `JOBS_INGEST_TOKEN`. Generate a long random token and keep it private.
-5. Deploy the updated Worker. The public read endpoint is `/v1/jobs`; ingestion routes require the token.
+The database is named `teampeach-jobs`; its D1 binding must be named `JOBS_DB`. The binding is declared in `AgentCalmz/domains/wrangler.toml` so the Worker deploy and Git configuration stay consistent.
 
 ## GitHub Actions configuration
 
-Configure these values in this repository:
+In this repository, open **Settings → Secrets and variables → Actions** and add:
 
 **Repository variable**
 
@@ -50,7 +50,7 @@ Configure these values in this repository:
 
 - `CLOUDFLARE_INGEST_TOKEN` = the exact same value as the Cloudflare Worker secret `JOBS_INGEST_TOKEN`.
 
-Then enable GitHub Actions and run **Daily TeamPeach job collection** manually once to verify the end-to-end connection. The scheduled run is at 07:45 Lagos time.
+Then open **Actions → TeamPeach job collection (every 4 hours)** and select **Run workflow** to verify the first complete run.
 
 ## Data window and freshness
 
