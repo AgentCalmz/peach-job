@@ -1,8 +1,8 @@
-name: Daily TeamPeach job collection
+name: TeamPeach job collection (every 4 hours)
 
 on:
   schedule:
-    - cron: "45 7 * * *"
+    - cron: "17 */4 * * *"
       timezone: "Africa/Lagos"
   workflow_dispatch:
 
