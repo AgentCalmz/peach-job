@@ -283,12 +283,28 @@ def worker_request(base_url: str, token: str, path: str, method: str = "GET",
                 if exc.code in (429, 500, 502, 503, 504) and attempt < 3:
                     time.sleep(min(20, 2 ** attempt))
                     continue
-                raise
+                try:
+                    error_body = exc.read(2000).decode("utf-8", errors="replace")
+                    parsed_error = json.loads(error_body) if error_body else {}
+                    detail = parsed_error.get("error") or parsed_error.get("detail") or error_body
+                except Exception:
+                    detail = "No readable error body"
+                raise RuntimeError(
+                    f"Cloudflare Worker rejected {method} {path} (HTTP {exc.code}): {str(detail)[:500]}"
+                ) from exc
             except (urllib.error.URLError, TimeoutError, OSError):
                 if attempt == 3:
                     raise
                 time.sleep(min(20, 2 ** attempt))
     return json.loads((data or b"{}").decode("utf-8", errors="replace"))
+
+
+def iter_batches(items: list[dict[str, Any]], batch_size: int):
+    """Yield non-empty batches that never exceed the receiving Worker's limit."""
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
+    for offset in range(0, len(items), batch_size):
+        yield items[offset:offset + batch_size]
 
 
 def fetch_board(ats: str, slug: str, cutoff_now: datetime) -> tuple[str, str, list[dict[str, Any]], str | None]:
@@ -367,9 +383,13 @@ def main() -> int:
 
     def flush() -> None:
         nonlocal batch
-        if batch:
-            worker_request(worker_url, token, "/v1/ingest/jobs", "POST", {"jobs": batch})
-            batch = []
+        if not batch:
+            return
+        # A single employer board can return hundreds of recent roles, so extending
+        # the batch may overshoot batch_size. Always split at the API's safe limit.
+        for chunk in iter_batches(batch, batch_size):
+            worker_request(worker_url, token, "/v1/ingest/jobs", "POST", {"jobs": chunk})
+        batch = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fetch_board, ats, slug, now) for ats, slug in all_boards]

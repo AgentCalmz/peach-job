@@ -59,6 +59,18 @@ class CollectorTests(unittest.TestCase):
         }, self.now)
         self.assertIsNone(row)
 
+    def test_job_batches_never_exceed_worker_batch_limit(self):
+        jobs = [{"id": index} for index in range(451)]
+        batches = list(collect.iter_batches(jobs, 200))
+        self.assertEqual([len(batch) for batch in batches], [200, 200, 51])
+        self.assertEqual(sum(len(batch) for batch in batches), len(jobs))
+        self.assertTrue(all(0 < len(batch) <= 200 for batch in batches))
+
+    def test_job_batches_handle_empty_input_and_reject_invalid_size(self):
+        self.assertEqual(list(collect.iter_batches([], 200)), [])
+        with self.assertRaises(ValueError):
+            list(collect.iter_batches([{"id": 1}], 0))
+
 
 if __name__ == "__main__":
     unittest.main()
