@@ -15,6 +15,9 @@ concurrency:
 
 jobs:
   collect:
+    # Secrets and variables were created under this GitHub Environment.
+    # Selecting it here makes them available to this job.
+    environment: workh
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
